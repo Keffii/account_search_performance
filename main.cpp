@@ -3,6 +3,8 @@
 #include <map>
 #include <random>
 #include <chrono>
+#include <iomanip>
+#include <algorithm>
 
 class BankAccount{
     std::string accountNumber;
@@ -14,13 +16,19 @@ public:
     BankAccount(std::string accountNumber, float balance = 0)
     :accountNumber(accountNumber),balance(balance)
     {
+        std::ostringstream oss;
+        oss << std::setw(10) << std::setfill('0') << accountNumber; // Format: 0000000001. 10 Tecken långt paddat med nollor. https://www.geeksforgeeks.org/stdsetbase-stdsetw-stdsetfill-in-cpp/
+        this->accountNumber = oss.str();
     }
 
-    std::string getAccountNumber()
+    std::string getAccountNumber() const
     {
 	    return this->accountNumber;
     }
 };
+
+//Klass binarysearchstorage som implementerar IAccountStorage interface
+
 
 //INTERFACE - gränssnitt "standard"
 class IAccountStorage {
@@ -39,6 +47,45 @@ public:
         return &accounts[accountNumber];
     } 
     
+};
+
+class BinarySearchStorage : public IAccountStorage {
+
+private:
+    std::vector<BankAccount> accounts;
+
+public:
+    void addAccount(BankAccount account) override {
+        accounts.push_back(account);
+        std::sort(accounts.begin(), accounts.end(), [](const BankAccount &a, const BankAccount &b) {
+            return a.getAccountNumber() < b.getAccountNumber();
+        });
+    }
+
+    BankAccount *findAccount(std::string accountNumber) override {
+        return binarySearch(accountNumber);
+    }
+    //iterative binary search
+    //https://www.geeksforgeeks.org/binary-search/
+
+    BankAccount* binarySearch(const std::string& accountNumber){
+        int low = 0;
+        int high = accounts.size() - 1;
+        while (low <= high){
+            int mid = low + (high - low) / 2;
+
+            if (accounts[mid].getAccountNumber() == accountNumber){
+                return &accounts[mid];
+            }
+            if (accounts[mid].getAccountNumber() < accountNumber){
+                low = mid + 1;
+            }
+            else{
+                high = mid - 1;
+            }
+        }
+        return nullptr;
+    }
 };
 
 class DistributedVectorAccountStorage : public IAccountStorage{
@@ -179,6 +226,12 @@ public:
 
 
 int main(int, char**){
+    BinarySearchStorage search;
+
+    
+    //cout a account to test the formatting
+    BankAccount a("1");
+    std::cout << a.getAccountNumber() << std::endl;
     //VectorAccountStorage storage;
     //VectorAccountStorage storage;
     //MapStorage storage;
