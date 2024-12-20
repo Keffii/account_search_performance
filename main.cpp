@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iomanip>
 #include <algorithm>
+#include <sstream>
 
 class BankAccount{
     std::string accountNumber;
@@ -16,23 +17,27 @@ public:
     BankAccount(std::string accountNumber, float balance = 0)
     :accountNumber(accountNumber),balance(balance)
     {
-        std::ostringstream oss;
-        oss << std::setw(10) << std::setfill('0') << accountNumber; // Format: 0000000001. 10 Tecken långt paddat med nollor. https://www.geeksforgeeks.org/stdsetbase-stdsetw-stdsetfill-in-cpp/
-        this->accountNumber = oss.str();
+        std::ostringstream ss;
+        ss << std::setw(10) << std::setfill('0') << accountNumber; // Format: 0000000001. 10 digits long with leading zeros
+        this->accountNumber = ss.str();
     }
 
-    std::string getAccountNumber() const
-    {
+    std::string getAccountNumber() const{
 	    return this->accountNumber;
+    }
+    
+    //Define sorting operator for bankaccount
+    bool operator<(const BankAccount& other) const {
+        return this->accountNumber < other.accountNumber;
     }
 };
 
-//Klass binarysearchstorage som implementerar IAccountStorage interface
 
 
 //INTERFACE - gränssnitt "standard"
 class IAccountStorage {
-public:    
+public:
+    virtual ~IAccountStorage() = default;
     virtual void addAccount(BankAccount account) = 0;
 	virtual BankAccount *findAccount(std::string accountNumber) = 0;        
 };
@@ -49,6 +54,7 @@ public:
     
 };
 
+//Class binarysearchstorage that implements IAccountStorage interface
 class BinarySearchStorage : public IAccountStorage {
 
 private:
@@ -57,36 +63,55 @@ private:
 public:
     void addAccount(BankAccount account) override {
         accounts.push_back(account);
-        std::sort(accounts.begin(), accounts.end(), [](const BankAccount &a, const BankAccount &b) {
-            return a.getAccountNumber() < b.getAccountNumber();
-        });
+    }
+
+    void sortAccounts(){
+        std::sort(accounts.begin(), accounts.end());
     }
 
     BankAccount *findAccount(std::string accountNumber) override {
         return binarySearch(accountNumber);
     }
-    //iterative binary search
-    //https://www.geeksforgeeks.org/binary-search/
 
+    //Iterative binary search
     BankAccount* binarySearch(const std::string& accountNumber){
-        int low = 0;
-        int high = accounts.size() - 1;
-        while (low <= high){
-            int mid = low + (high - low) / 2;
-
-            if (accounts[mid].getAccountNumber() == accountNumber){
-                return &accounts[mid];
-            }
-            if (accounts[mid].getAccountNumber() < accountNumber){
-                low = mid + 1;
-            }
-            else{
-                high = mid - 1;
-            }
+    int low = 0;
+    int high = accounts.size() - 1;
+    int step = 1;
+    
+    while (low <= high){
+        auto startTime = std::chrono::high_resolution_clock::now();
+        
+        int mid = low + (high - low) / 2;
+        if (accounts[mid].getAccountNumber() == accountNumber){
+            return &accounts[mid];
         }
-        return nullptr;
+        
+        if (accounts[mid].getAccountNumber() < accountNumber){
+            low = mid + 1;
+        }
+        else{
+            high = mid - 1;
+        }
+        
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
+        std::cout << "Binary search step " << step << ": Took " << duration << " nanoseconds" << std::endl;
+        step++;
+    }
+    return nullptr;
+    } 
+    const std::vector<BankAccount>& getAccounts() const {
+        return accounts;
+    }
+
+    void printAllAccounts() const {
+        for (const auto& account : accounts) {
+            std::cout << account.getAccountNumber() << std::endl;
+        }
     }
 };
+
 
 class DistributedVectorAccountStorage : public IAccountStorage{
         std::vector<BankAccount> accounts0;
@@ -212,10 +237,11 @@ public:
 	Bank(IAccountStorage *storage):accountStorage(storage){
 
     }
-	bool addAccount(std::string accountNumber){
+    bool addAccount(std::string accountNumber){
         //validate
         //if something (accountNumber) return false
-        accountStorage->addAccount(accountNumber);
+        BankAccount account(accountNumber);
+        accountStorage->addAccount(account);
         return true;
     }
 	BankAccount *getAccount(std::string accountNumber){
@@ -226,21 +252,21 @@ public:
 
 
 int main(int, char**){
-    BinarySearchStorage search;
-
-    
-    //cout a account to test the formatting
-    BankAccount a("1");
-    std::cout << a.getAccountNumber() << std::endl;
-    //VectorAccountStorage storage;
-    //VectorAccountStorage storage;
-    //MapStorage storage;
-    DistributedVectorAccountStorage storage;
-    //MapAccountStor age storage;
+    const int accountAmount = 10;
+    BinarySearchStorage storage;
     Bank bank(&storage);
 
-    const int AntalAccounts =  10000000;
+    // Generate and shuffle account 
+    std::vector<std::string> accountNumbers(accountAmount);
+    for (int i = 0; i < accountAmount; i++) {
+        accountNumbers[i] = std::to_string(i);
+    }
+    
 
+    // Shuffle account numbers using mersenne twister
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::shuffle(accountNumbers.begin(), accountNumbers.end(), gen);
 
     std::string sFirst = ""; 
     std::string sLast = ""; 
@@ -248,32 +274,47 @@ int main(int, char**){
 
     std::cout << "INITIALIZE: " << std::endl;
     auto startTime = std::chrono::high_resolution_clock::now();
-    for(int i = 0;i < AntalAccounts; i++){
-        std::string accountNumber =  std::to_string(i);
-        if(i == 0){
+    for (int i = 0; i < accountAmount; i++) {
+        std::string accountNumber = accountNumbers[i];
+        if (i == 0) {
             sFirst = accountNumber;
         }
-        if(i == AntalAccounts-1){
+        if (i == accountAmount - 1) {
             sLast = accountNumber;
         }
         bank.addAccount(accountNumber);
     }
-
     auto endTime = std::chrono::high_resolution_clock::now();
-    std::cout << "INIT Took: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime    - startTime).count() << " milliseconds" << std::endl;
+    std::cout << "INIT Took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+
+    // Print first and last account numbers
+    std::cout << "First account number: " << sFirst << std::endl;
+    std::cout << "Last account number: " << sLast << std::endl;
+
+    // Print all account numbers
+    std::cout << "All account numbers:" << std::endl;
+    storage.printAllAccounts();
+
+    // Sort accounts
+    startTime = std::chrono::high_resolution_clock::now();
+    storage.sortAccounts();
+    endTime = std::chrono::high_resolution_clock::now();
+    std::cout << "Sort took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
 
     startTime = std::chrono::high_resolution_clock::now();
-    BankAccount *p = bank.getAccount(sFirst);
+    BankAccount* p = bank.getAccount(sFirst);
     endTime = std::chrono::high_resolution_clock::now();
-    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime    - startTime).count() << " milliseconds" << std::endl;
+    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
 
     startTime = std::chrono::high_resolution_clock::now();
     p = bank.getAccount(sLast);
     endTime = std::chrono::high_resolution_clock::now();
-    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime    - startTime).count() << " milliseconds" << std::endl;
+    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
 
     startTime = std::chrono::high_resolution_clock::now();
     p = bank.getAccount(sNotFound);
     endTime = std::chrono::high_resolution_clock::now();
-    std::cout << "NOT FOUND" << " took: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime    - startTime).count() << " milliseconds" << std::endl;
+    std::cout << "NOT FOUND" << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+
+    return 0;
 }
