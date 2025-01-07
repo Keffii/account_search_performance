@@ -1,5 +1,5 @@
 PROG = main.exe 
-SRC = main.cpp
+SRC = src/main.cpp src/bank.cpp src/bankaccount.cpp src/binarysearchstorage.cpp
 CFLAGS = -g -std=c++17
 LIBS = 
 CC=g++

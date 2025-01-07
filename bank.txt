@@ -1,0 +1,19 @@
+INITIALIZE: 
+INIT Took: 16200 nanoseconds
+First account number: 0
+Last account number: 2
+All account numbers:
+0000000000
+0000000009
+0000000005
+0000000004
+0000000007
+0000000008
+0000000006
+0000000003
+0000000001
+0000000002
+Sort took: 2100 nanoseconds
+Binary search step 1: Took 500 nanoseconds
+Binary search step 2: Took 300 nanoseconds
+Binary search step 3: Took 300 nanoseconds
