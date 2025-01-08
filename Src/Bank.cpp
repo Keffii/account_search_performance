@@ -9,7 +9,6 @@ bool Bank::addAccount(std::string accountNumber) {
     return true;
 }
 
-BankAccount* Bank::getAccount(std::string accountNumber) {
-    std::ofstream outFile("bank.txt", std::ios::app);
-    return accountStorage->findAccount(accountNumber);
+BankAccount* Bank::getAccount(std::string accountNumber, int& foundAtStep) {
+    return accountStorage->findAccount(accountNumber, foundAtStep);
 }

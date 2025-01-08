@@ -3,88 +3,103 @@
 #include <random>
 #include <chrono>
 #include <iostream>
-#include <fstream>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
 
 int main() {
-    std::ofstream outFile("bank.txt");
-
+    // Initialize storage with 10 accounts
     const int accountAmount = 10;
     BinarySearchStorage storage;
     Bank bank(&storage);
 
-    // Generate and shuffle account numbers
-    std::vector<std::string> accountNumbers(accountAmount);
-    for (int i = 0; i < accountAmount; i++) {
-        accountNumbers[i] = std::to_string(i);
+    // Create and shuffle numbers 1-10
+    std::vector<int> numbers(accountAmount);
+    for(int i = 0; i < accountAmount; i++) {
+        numbers[i] = i + 1;
     }
 
-    // Shuffle account numbers using mersenne twister
+    // Use current time as seed for stronger randomization
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::shuffle(accountNumbers.begin(), accountNumbers.end(), gen);
+    std::shuffle(numbers.begin(), numbers.end(), gen);
 
-    std::string sFirst = ""; 
-    std::string sLast = ""; 
-    std::string sNotFound = "notfound"; 
+    // Sort the numbers for binary search
+    std::sort(numbers.begin(), numbers.end());
 
-    std::cout << "INITIALIZE: " << std::endl;
-    outFile << "INITIALIZE: " << std::endl;
-
-    auto startTime = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < accountAmount; i++) {
-        std::string accountNumber = accountNumbers[i];
-        if (i == 0) {
-            sFirst = accountNumber;
-        }
-        if (i == accountAmount - 1) {
-            sLast = accountNumber;
-        }
-        bank.addAccount(accountNumber);
+    // Add formatted accounts to storage
+    for (const auto& num : numbers) {
+        std::ostringstream ss;
+        ss << std::setw(10) << std::setfill('0') << num;
+        bank.addAccount(ss.str());
     }
-    auto endTime = std::chrono::high_resolution_clock::now();
-    
-    std::cout << "INIT Took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
-    outFile << "INIT Took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
 
-    std::cout << "First account number: " << sFirst << std::endl;
-    outFile << "First account number: " << sFirst << std::endl;
-    
-    std::cout << "Last account number: " << sLast << std::endl;
-    outFile << "Last account number: " << sLast << std::endl;
+    // Write the sorted array to bank.txt
+    std::ofstream outFile("bank.txt", std::ios_base::app); // Open file in append mode
+    outFile << "Sorted array: " << std::endl;
+    for (const auto& num : numbers) {
+        outFile << std::setw(10) << std::setfill('0') << num << " " << std::endl;
+    }
+    outFile << std::endl;
 
-    std::cout << "All account numbers:" << std::endl;
-    outFile << "All account numbers:" << std::endl;
-    storage.printAllAccounts(outFile);
+    // Get user input
+    int target;
+    std::cout << "Enter a number between 1 and 10: ";
+    std::cin >> target;
 
-    startTime = std::chrono::high_resolution_clock::now();
-    storage.sortAccounts();
-    endTime = std::chrono::high_resolution_clock::now();
-    
-    std::cout << "Sort took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
-    outFile << "Sort took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+    // Format the target number
+    std::ostringstream ss;
+    ss << std::setw(10) << std::setfill('0') << target;
+    std::string formattedTarget = ss.str();
 
-    // Test search for first account
-    startTime = std::chrono::high_resolution_clock::now();
-    BankAccount* p = bank.getAccount(sFirst);
-    endTime = std::chrono::high_resolution_clock::now();
-    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
-    outFile << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+    // Perform binary search with a maximum of 4 steps
+    int steps = 0;
+    int foundAtStep = 0;
+    BankAccount* foundAccount = nullptr;
 
-    // Test search for last account
-    startTime = std::chrono::high_resolution_clock::now();
-    p = bank.getAccount(sLast);
-    endTime = std::chrono::high_resolution_clock::now();
-    std::cout << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
-    outFile << p->getAccountNumber() << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+    foundAccount = bank.getAccount(formattedTarget, foundAtStep);
 
-    // Test search for non-existent account
-    startTime = std::chrono::high_resolution_clock::now();
-    p = bank.getAccount(sNotFound);
-    endTime = std::chrono::high_resolution_clock::now();
-    std::cout << "NOT FOUND" << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
-    outFile << "NOT FOUND" << " took: " << std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count() << " nanoseconds" << std::endl;
+    if (foundAccount != nullptr) {
+        outFile << "Number " << formattedTarget << " found in " << foundAtStep << " steps.\n" << std::endl;
 
-    outFile.close();
+        // Create and shuffle numbers 1-10
+        std::vector<int> randomOrder(accountAmount);
+        for(int i = 0; i < accountAmount; i++) {
+            randomOrder[i] = i + 1;
+        }
+        std::shuffle(randomOrder.begin(), randomOrder.end(), gen);
+
+        // Add the found number to the random order
+        randomOrder.push_back(target);
+
+        // Print the new random order
+        outFile << "New random order with the found number: ";
+        for (const auto& num : randomOrder) {
+            outFile << num << " ";
+        }
+        outFile << std::endl;
+
+        // Measure the time taken to sort the random order
+        auto start = std::chrono::high_resolution_clock::now();
+        std::sort(randomOrder.begin(), randomOrder.end());
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        // Print the sorted random order
+        outFile << "Sorted random order: ";
+        for (const auto& num : randomOrder) {
+            outFile << num << " ";
+        }
+        outFile << std::endl;
+
+        // Print the time taken to sort
+        outFile << "Time taken to sort: " << duration << " nanoseconds." << std::endl;
+    } else {
+        outFile << "Number " << formattedTarget << " not found within 4 steps." << std::endl;
+    }
+
+    outFile.close(); // Close the file
+
     return 0;
 }
