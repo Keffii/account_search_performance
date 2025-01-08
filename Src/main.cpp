@@ -70,15 +70,17 @@ int main() {
         }
         std::shuffle(randomOrder.begin(), randomOrder.end(), gen);
 
-        // Add the found number to the random order
-        randomOrder.push_back(target);
+        // Generate a random index to insert the found number
+        std::uniform_int_distribution<> dis(0, randomOrder.size());
+        int randomIndex = dis(gen);
+        randomOrder.insert(randomOrder.begin() + randomIndex, target);
 
         // Print the new random order
         outFile << "New random order with the found number: ";
         for (const auto& num : randomOrder) {
             outFile << num << " ";
         }
-        outFile << std::endl;
+        outFile << std::endl << std::endl;
 
         // Measure the time taken to sort the random order
         auto start = std::chrono::high_resolution_clock::now();
@@ -91,12 +93,12 @@ int main() {
         for (const auto& num : randomOrder) {
             outFile << num << " ";
         }
-        outFile << std::endl;
+        outFile << std::endl << std::endl;
 
         // Print the time taken to sort
-        outFile << "Time taken to sort: " << duration << " nanoseconds." << std::endl;
+        outFile << "Time taken to sort: " << duration << " nanoseconds.";
     } else {
-        outFile << "Number " << formattedTarget << " not found within 4 steps." << std::endl;
+        outFile << "Number " << formattedTarget << " not found within 4 steps.";
     }
 
     outFile.close(); // Close the file
